@@ -1,4 +1,4 @@
-""" Simple tool to run a django development server and test the urls with wcag-zoo """
+"""Simple tool to run a django development server and test the urls with wcag-zoo"""
 
 # pylint: disable=R0914, W0718
 import argparse
@@ -38,14 +38,17 @@ def run_server(host="0.0.0.0", port: int = 8799, logfile="server-wcag-zoo-log.tx
 
     with open(logfile, "w", encoding="utf-8") as log:
         # Use environment variable to turn off the debug toolbar
-        # Not appropriate to flag problems with that since it's only used in debugging
+
+        # Not appropriate to flag problems with that since it's only
+        # used in debugging
+
         # But we need DEBUG to be on so that static files are served
 
         environment = os.environ.copy()
         environment["DEBUG_TOOLBAR"] = "False"
 
         return subprocess.Popen(
-            ["python", "manage.py", "runserver", f"{host}:{port}"],
+            ["python", "manage.py", "runserver", f"{host}:{port}"],  # noqa: E231
             stdout=log,
             stderr=log,
             env=environment,
@@ -371,7 +374,7 @@ def main():
             url = sanitise_url(url)
             logger.debug(f"Testing url: '{url}'")
             result = wcag_on_url(
-                f"http://{host}:{port}{url}",
+                f"http://{host}:{port}{url}",  # noqa: E231
                 logger,
                 staticpath=args.staticpath,
                 level=level,

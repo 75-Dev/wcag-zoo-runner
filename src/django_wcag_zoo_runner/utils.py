@@ -1,4 +1,4 @@
-""" Utilities for interacting with django """
+"""Utilities for interacting with django"""
 
 import os
 import sys
@@ -57,7 +57,7 @@ def flatten_urlpatterns(urlpatterns, base="", namespace=None):
     for p in urlpatterns:
         if isinstance(p, django.urls.URLPattern):
             if namespace:
-                name = f"{namespace}:{p.name}"
+                name = f"{namespace}:{p.name}"  # noqa: E231
             else:
                 name = p.name
             pattern = str(p.pattern)
@@ -65,7 +65,7 @@ def flatten_urlpatterns(urlpatterns, base="", namespace=None):
         elif isinstance(p, django.urls.URLResolver) or hasattr(p, "url_patterns"):
             patterns = p.url_patterns
             if namespace and p.namespace:
-                _namespace = f"{namespace}:{p.namespace}"
+                _namespace = f"{namespace}:{p.namespace}"  # noqa: E231
             else:
                 _namespace = p.namespace or namespace
             views.extend(
