@@ -1,0 +1,5 @@
+django
+jsonschema >= 4.22.0
+requests >= 2.31.0
+termcolor >= 2.4.0
+wcag-zoo >= 0.2.6
