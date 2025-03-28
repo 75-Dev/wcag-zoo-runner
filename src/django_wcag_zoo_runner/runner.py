@@ -235,7 +235,7 @@ def gather_urls():
         print(sanitise_url(url))
 
 
-def test_coverage(urls, logger):
+def test_coverage(urls):
     """Given a list of grouped URLs (include/exclude keys in dict), check the list
     covers the full range of URLs for the django project
 
@@ -358,7 +358,7 @@ def main():
     config = load_conf()
     if "include" in config.sections():
         urls = config
-        coverage_pass = test_coverage(urls, logger)
+        coverage_pass = test_coverage(urls)
     else:
         logger.warning(
             "Using default URL gathering. This will "
