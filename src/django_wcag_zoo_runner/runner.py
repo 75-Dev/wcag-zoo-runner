@@ -3,6 +3,7 @@
 # pylint: disable=R0914, W0718
 import argparse
 import configparser
+import logging
 import os
 import re
 import subprocess
@@ -15,7 +16,7 @@ from wcag_zoo.validators.ayeaye import Ayeaye
 from wcag_zoo.validators.molerat import Molerat
 from wcag_zoo.validators.tarsier import Tarsier
 
-from . import dwr_logging
+logger = logging.getLogger(__name__)
 from .utils import activate_django_project, project_urls
 
 LICENCE = """wcag-zoo-runner  Copyright (C) 2024  James Shuttleworth
@@ -46,6 +47,7 @@ def run_server(host="0.0.0.0", port: int = 8799, logfile="server-wcag-zoo-log.tx
 
         environment = os.environ.copy()
         environment["DEBUG_TOOLBAR"] = "False"
+        environment["DEBUG"] = "True"
 
         return subprocess.Popen(
             ["python", "manage.py", "runserver", f"{host}:{port}"],  # noqa: E231
@@ -55,7 +57,7 @@ def run_server(host="0.0.0.0", port: int = 8799, logfile="server-wcag-zoo-log.tx
         )
 
 
-def get_url(url: str, timeout: int, logger):
+def get_url(url: str, timeout: int):
     """Load content from the given URL"""
 
     # Retry multiple times, devrementing retries var to 0
@@ -76,9 +78,9 @@ def get_url(url: str, timeout: int, logger):
             Exception,
         ) as e:
             success = False
-            logger.debug("Server not responding")
+            logger.warn("Server not responding")
             if retries > 0:
-                logger.debug(f"Retry after a delay of {delay}")
+                logger.warn(f"Retry after a delay of {delay}")
             else:
                 logger.error("No more retries - giving up")
                 raise ConnectionError("Failed to reach server") from e
@@ -119,7 +121,7 @@ def wcag_on_url(url: str, logger, timeout: int = 3, staticpath=".", level="AAA")
     results = {i: [] for i in ["success", "failures", "warnings", "skipped"]}
 
     tools = [Tarsier, Anteater, Ayeaye, Molerat]
-    content = get_url(url, timeout, logger)
+    content = get_url(url, timeout)
     content_type = content.headers["Content-Type"]
     if not content_type.startswith("text/html"):
         logger.info(f"Skipping {url} - not HTML - Content type={content_type}")
@@ -245,7 +247,7 @@ def test_coverage(urls, logger):
     success = True
     for i in django_urls:
         found = False
-        url = f"/{i[1]}"
+        url = f"{i[1]}"
         logger.debug(f"Checking project URL: '{url}'")
         if url in proposed:
             found = True
@@ -340,9 +342,8 @@ def main():
 
     args = parser.parse_args()
 
-    logger = dwr_logging.Logger(args.verbosity)
     logger.info(LICENCE)
-    host = "0.0.0.0"
+    host = "127.0.0.1"
     port = args.port
     level = args.level
     activate_django_project()
@@ -372,9 +373,10 @@ def main():
     try:
         for url in urls["include"]:
             url = sanitise_url(url)
-            logger.debug(f"Testing url: '{url}'")
+            full_url = (f"http://{host}:{port}/{url}",)  # noqa: E231
+            logger.info("Testing path: %s - (%s)", url, full_url)
             result = wcag_on_url(
-                f"http://{host}:{port}{url}",  # noqa: E231
+                full_url,
                 logger,
                 staticpath=args.staticpath,
                 level=level,
@@ -398,3 +400,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+#  LocalWords:  HTTPError
