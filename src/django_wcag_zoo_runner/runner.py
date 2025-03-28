@@ -67,6 +67,7 @@ def get_url(url: str, timeout: int):
     retries = 3
     delay = 1
     success = False
+
     while not success:
         success = True
         try:
@@ -79,7 +80,7 @@ def get_url(url: str, timeout: int):
             Exception,
         ) as e:
             success = False
-            logger.warn("Server not responding")
+            logger.warn("Server not responding %s", e)
             if retries > 0:
                 logger.warn(f"Retry after a delay of {delay}")
             else:
@@ -156,8 +157,8 @@ def display_results(results):
     """display each category of results in an appropriate style"""
 
     if len(results["success"]) > 0:
-        logger.full("✓ SUCCESSES")
-        logger.full(process_results_hierarchy(results["success"]))
+        logger.info("✓ SUCCESSES")
+        logger.info(process_results_hierarchy(results["success"]))
     if len(results["failures"]) > 0:
         logger.error("✗ FAILURES")
         logger.error(process_results_hierarchy(results["failures"]))
@@ -374,7 +375,7 @@ def main():
     try:
         for url in urls["include"]:
             url = sanitise_url(url)
-            full_url = (f"http://{host}:{port}/{url}",)  # noqa: E231
+            full_url = f"http://{host}:{port}/{url}"  # noqa: E231
             logger.info("Testing path: %s - (%s)", url, full_url)
             result = wcag_on_url(
                 full_url,
