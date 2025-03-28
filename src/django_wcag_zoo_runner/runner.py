@@ -1,6 +1,6 @@
 """Simple tool to run a django development server and test the urls with wcag-zoo"""
 
-# pylint: disable=R0914, W0718
+# pylint: disable=R0914, W0718, wrong-import-position
 import argparse
 import configparser
 import logging
@@ -16,8 +16,9 @@ from wcag_zoo.validators.ayeaye import Ayeaye
 from wcag_zoo.validators.molerat import Molerat
 from wcag_zoo.validators.tarsier import Tarsier
 
-logger = logging.getLogger(__name__)
 from .utils import activate_django_project, project_urls
+
+logger = logging.getLogger(__name__)
 
 LICENCE = """wcag-zoo-runner  Copyright (C) 2024  James Shuttleworth
 This program comes with ABSOLUTELY NO WARRANTY;
@@ -116,7 +117,7 @@ def combine_results(res1, res2):
     return result
 
 
-def wcag_on_url(url: str, logger, timeout: int = 3, staticpath=".", level="AAA"):
+def wcag_on_url(url: str, timeout: int = 3, staticpath=".", level="AAA"):
     """Run all wcag-zoo tools on the given url"""
     results = {i: [] for i in ["success", "failures", "warnings", "skipped"]}
 
@@ -151,7 +152,7 @@ def process_results_hierarchy(h):
     return output
 
 
-def display_results(results, logger):
+def display_results(results):
     """display each category of results in an appropriate style"""
 
     if len(results["success"]) > 0:
@@ -377,11 +378,10 @@ def main():
             logger.info("Testing path: %s - (%s)", url, full_url)
             result = wcag_on_url(
                 full_url,
-                logger,
                 staticpath=args.staticpath,
                 level=level,
             )
-            display_results(result, logger)
+            display_results(result)
             if len(result["failures"]) + len(result["warnings"]) > 0:
                 test_pass = False
 
