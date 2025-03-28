@@ -9,16 +9,83 @@ import re
 import subprocess
 import sys
 import time
+from enum import Enum
 
 import requests
 from wcag_zoo.validators.anteater import Anteater
 from wcag_zoo.validators.ayeaye import Ayeaye
-from wcag_zoo.validators.molerat import Molerat
+
+# from wcag_zoo.validators.molerat import Molerat
 from wcag_zoo.validators.tarsier import Tarsier
 
 from .utils import activate_django_project, project_urls
 
 logger = logging.getLogger(__name__)
+
+
+class SuccessEnum(Enum):
+    """Enum for reporting levels"""
+
+    SUCCESS = 1
+    SKIPPED = 2
+    WARNING = 3
+    FAILURE = 4
+
+
+class ResultLog:
+    """Class for collation of report"""
+
+    def __init__(self):
+        """Init"""
+        self.log = {e: [] for e in SuccessEnum}
+        print(self.log)
+
+    def success(self, message):
+        """Log a successful test"""
+        self.log[SuccessEnum.SUCCESS].append(message)
+
+    def failure(self, message):
+        """Log a failed test"""
+        self.log[SuccessEnum.FAILURE].append(message)
+
+    def warning(self, message):
+        """Log a warning"""
+        self.log[SuccessEnum.WARNING].append(message)
+
+    def skipped(self, message):
+        """Log a skipped test"""
+        self.log[SuccessEnum.SKIPPED].append(message)
+
+    def report(self, report_level):
+        """Produce a report of tests
+
+        report_level is used to determine which are output
+        Always includes failures
+        2+ includes warnings
+        3+ includes skipped tests
+        4+ includes successful tests
+        """
+        output = ""
+        headings = {}
+        headings[SuccessEnum.FAILURE] = "Failures"
+        if report_level > 1:
+            headings[SuccessEnum.WARNING] = "Warnings"
+        if report_level > 2:
+            headings[SuccessEnum.SKIPPED] = "Skipped"
+        if report_level > 3:
+            headings[SuccessEnum.SUCCESS] = "Successes"
+
+        for num, heading in headings.items():
+            output += f"{heading}\n"
+            output += "----"
+            for item in self.log[num]:
+                output += item
+                output += "\n"
+            output += "\n"
+        return output
+
+
+result_log = ResultLog()
 
 LICENCE = """wcag-zoo-runner  Copyright (C) 2024  James Shuttleworth
 This program comes with ABSOLUTELY NO WARRANTY;
@@ -45,6 +112,8 @@ def run_server(host="0.0.0.0", port: int = 8799, logfile="server-wcag-zoo-log.tx
         # used in debugging
 
         # But we need DEBUG to be on so that static files are served
+        # Other than that, clone the environment in case other vars
+        # are needed for the applicaiton being tested
 
         environment = os.environ.copy()
         environment["DEBUG_TOOLBAR"] = "False"
@@ -80,9 +149,9 @@ def get_url(url: str, timeout: int):
             Exception,
         ) as e:
             success = False
-            logger.warn("Server not responding %s", e)
+            logger.warning("Server not responding %s", e)
             if retries > 0:
-                logger.warn(f"Retry after a delay of {delay}")
+                logger.warning("Retry after a delay of %d", delay)
             else:
                 logger.error("No more retries - giving up")
                 raise ConnectionError("Failed to reach server") from e
@@ -92,7 +161,7 @@ def get_url(url: str, timeout: int):
     return content
 
 
-def wcag_tool_on_content(tool, content: str, url: str, staticpath=".", level="AAA"):
+def wcag_tool_on_content(tool, content: str, url: str, staticpath=".", level="AA"):
     """Use the provided wcag-zoo tool to analyse the given content"""
 
     instance = tool(staticpath=staticpath, level=level)
@@ -118,15 +187,15 @@ def combine_results(res1, res2):
     return result
 
 
-def wcag_on_url(url: str, timeout: int = 3, staticpath=".", level="AAA"):
+def wcag_on_url(url: str, timeout: int = 3, staticpath=".", level="AA"):
     """Run all wcag-zoo tools on the given url"""
     results = {i: [] for i in ["success", "failures", "warnings", "skipped"]}
 
-    tools = [Tarsier, Anteater, Ayeaye, Molerat]
+    tools = [Tarsier, Anteater, Ayeaye]  # , Molerat]
     content = get_url(url, timeout)
     content_type = content.headers["Content-Type"]
     if not content_type.startswith("text/html"):
-        logger.info(f"Skipping {url} - not HTML - Content type={content_type}")
+        logger.info("Skipping %s - not HTML - Content type=%s", url, content_type)
         return results
     for tool in tools:
         result = wcag_tool_on_content(
@@ -153,21 +222,18 @@ def process_results_hierarchy(h):
     return output
 
 
-def display_results(results):
+def display_results(results, report_level):
     """display each category of results in an appropriate style"""
 
     if len(results["success"]) > 0:
-        logger.info("✓ SUCCESSES")
-        logger.info(process_results_hierarchy(results["success"]))
+        result_log.success(process_results_hierarchy(results["success"]))
     if len(results["failures"]) > 0:
-        logger.error("✗ FAILURES")
-        logger.error(process_results_hierarchy(results["failures"]))
+        result_log.failure(process_results_hierarchy(results["failures"]))
     if len(results["warnings"]) > 0:
-        logger.warning("‼ WARNINGS")
-        logger.warning(process_results_hierarchy(results["warnings"]))
+        result_log.warning(process_results_hierarchy(results["warnings"]))
     if len(results["skipped"]) > 0:
-        logger.info("↷ SKIPPED")
-        logger.info(process_results_hierarchy(results["skipped"]))
+        result_log.skipped(process_results_hierarchy(results["skipped"]))
+    print(result_log.report(report_level))
 
 
 def sanitise_url(url: str):
@@ -250,7 +316,7 @@ def test_coverage(urls):
     for i in django_urls:
         found = False
         url = f"{i[1]}"
-        logger.debug(f"Checking project URL: '{url}'")
+        logger.debug("Checking project URL: '%s'", url)
         if url in proposed:
             found = True
             logger.debug("\tFound plain match")
@@ -259,7 +325,7 @@ def test_coverage(urls):
             r = re.compile(url)
             for j in urls["include"]:
                 if r.match(j):
-                    logger.debug(f"\tFound included URL match to regex: '{j}'")
+                    logger.debug("\tFound included URL match to regex: '%s'", j)
                     found = True
                     break
             if found:
@@ -271,12 +337,12 @@ def test_coverage(urls):
                 except re.error:
                     continue
                 if r.match(url):
-                    logger.debug(f"\tFound exclude regex that matches URL: '{j}'")
+                    logger.debug("\tFound exclude regex that matches URL: '%s'", j)
                     found = True
                     break
         if not found:
             success = False
-            logger.warning(f"Couldn't find a match for project URL '{url}'")
+            logger.warning("Couldn't find a match for project URL '%s'", url)
     return success
 
 
@@ -292,7 +358,7 @@ def main():
 
     coverage_pass = True  # Set to false if coverage fails
     test_pass = True  # set to false if a test fails
-
+    logging.basicConfig(filename="wcag_zoo_runner.log", level=logging.DEBUG)
     parser = argparse.ArgumentParser(
         prog="python -m django_wcag_zoo_runner",
         description="Run WCAG zoo tools on a django project",
@@ -309,13 +375,12 @@ def main():
         "--verbosity",
         "-v",
         type=int,
-        help="Set verbosity (0 - errors only, 1 - include warnings, "
-        + "2 - include skipped tests, 3 - include successful tests, "
-        + "4 - include debug info)."
-        + " Default: 1",
+        help="Set verbosity (1 - failures only, 2 - include warnings, "
+        + "3 - include skipped tests, 4 - include successful tests, "
+        + " Default: 2",
         metavar="N",
-        choices=[0, 1, 2, 3, 4],
-        default=1,
+        choices=[1, 2, 3, 4],
+        default=2,
     )
     parser.add_argument(
         "--staticpath",
@@ -329,10 +394,10 @@ def main():
         "--level",
         "-l",
         type=str,
-        help="Set WCAG zoo level: AA or AAA. Default: AAA",
+        help="Set WCAG zoo level: AA or AAA. Default: AA",
         metavar="LEVEL",
         choices=["AA", "AAA"],
-        default="AAA",
+        default="AA",
     )
 
     parser.add_argument(
@@ -382,12 +447,12 @@ def main():
                 staticpath=args.staticpath,
                 level=level,
             )
-            display_results(result)
+            display_results(result, report_level=args.verbosity)
             if len(result["failures"]) + len(result["warnings"]) > 0:
                 test_pass = False
 
     except ConnectionError as e:
-        logger.debug(f"Failed to load and test: {e}")
+        logger.debug("Failed to load and test: %s", e)
         a.terminate()
     finally:
         logger.debug("Terminating server process")
