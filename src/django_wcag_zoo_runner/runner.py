@@ -21,6 +21,8 @@ from wcag_zoo.validators.tarsier import Tarsier
 from .utils import activate_django_project, project_urls
 
 logger = logging.getLogger(__name__)
+# logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+logger.setLevel(logging.ERROR)
 
 
 class SuccessEnum(Enum):
@@ -363,7 +365,7 @@ def main():
 
     coverage_pass = True  # Set to false if coverage fails
     test_pass = True  # set to false if a test fails
-    logging.basicConfig(filename="wcag_zoo_runner.log", level=logging.DEBUG)
+
     parser = argparse.ArgumentParser(
         prog="python -m django_wcag_zoo_runner",
         description="Run WCAG zoo tools on a django project",
@@ -418,7 +420,20 @@ def main():
     host = "127.0.0.1"
     port = args.port
     level = args.level
+
     activate_django_project()
+    # Silence all other loggers
+    for handler in logging.root.handlers:
+        handler.addFilter(logging.Filter(__name__))
+
+    # loggers = [
+    #     logging.getLogger(name)
+    #     for name in logging.root.manager.loggerDict  # pylint: disable=E1101
+    # ]
+
+    # for l in loggers:
+    #     if l.name != __name__:
+    #         l.setLevel(logging.CRITICAL)
 
     if args.gather_urls:
         gather_urls()
