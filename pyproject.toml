@@ -3,7 +3,7 @@
 name = "django_wcag_zoo_runner"
 version = "0.0.1"
 authors = [
-  { name="James Shuttleworth", email="digehode@googlemail.com" },
+  { name="James Shuttleworth", email="75-dev@proton.me" },
 ]
 description = "Tool for running WCAG-zoo tests against a django project"
 readme = "README.md"
@@ -16,8 +16,8 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/digehode/wcag-zoo-runner"
-Issues = "https://github.com/digehode/wcag-zoo-runner/issues"
+Homepage = "https://github.com/75-Dev/wcag-zoo-runner"
+Issues = "https://github.com/75-Dev/wcag-zoo-runner/issues"
 
 [build-system]
 requires = ["hatchling"]
