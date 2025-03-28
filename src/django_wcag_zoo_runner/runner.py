@@ -38,7 +38,6 @@ class ResultLog:
     def __init__(self):
         """Init"""
         self.log = {e: [] for e in SuccessEnum}
-        print(self.log)
 
     def success(self, message):
         """Log a successful test"""
@@ -99,6 +98,12 @@ def load_conf(configfile: str = "wcag_zoo_runner.ini"):
     """Load config file and return congifparser object"""
     config = configparser.ConfigParser(delimiters=("="), allow_no_value=True)
     config.read(configfile)
+    if "include" not in config or "exclude" not in config:
+        logger.error(
+            "You must include an include and exclude section in the "
+            "configuation file, even if they are empty"
+        )
+        sys.exit(1)
     return config
 
 
